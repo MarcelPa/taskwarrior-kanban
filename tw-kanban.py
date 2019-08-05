@@ -2,10 +2,11 @@
 
 import subprocess
 import json
-import jinja2
 import datetime
 import os
 import sys
+import curses
+import pdb
 
 SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -58,7 +59,17 @@ def write_html(data, filename):
     with open(filename, 'w') as f:
         f.write(data)
 
-def main():
+def write_to_window(win, list):
+    """
+    Writes a list of ToDos to a curses window
+    """
+
+    for i, item in enumerate(list):
+        # TODO: make fancy word breaking stuff here
+        # This one defines the layout
+        win.addnstr(i+3, 1,f"{item['description']} [{item['project']}]\n", int(curses.COLS/3)-3)
+
+def main(stdscr):
 
     # empty master dictionary to be filled up and passed to jinja template rendering function
     tasks_dic = {} 
@@ -89,12 +100,53 @@ def main():
     completed_tasks = get_tasks(['status:completed']) 
     tasks_dic['completed_tasks'] = completed_tasks[:MAX_COMPLETED]
 
+    #stdscr = curses.initscr()
+    curses.start_color()
+    curses.noecho()
+    curses.cbreak()
+    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)
+    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_YELLOW)
+    curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_GREEN)
+
+    maxwidth = int(curses.COLS/3)
+    windows = [None, None, None]
+    for win_i in range(0,3):
+        windows[win_i] = curses.newwin(curses.LINES, maxwidth-1, 0, win_i * maxwidth)
+    stdscr.refresh()
+    left, center, right = windows
+
+    left.border(0)
+    left.bkgd(' ', curses.color_pair(1))
+    left.addstr(1, int(maxwidth/2)-4, "Backlog", curses.A_BOLD)
+    left.bkgd(' ', curses.A_NORMAL)
+    write_to_window(left, todo_tasks)
+    left.refresh()
+
+    center.border(0)
+    center.bkgd(' ', curses.color_pair(2))
+    center.addstr(1, int(maxwidth/2)-6, "In Progress", curses.A_BOLD)
+    center.bkgd(' ', curses.A_NORMAL)
+    write_to_window(center, started_tasks)
+    center.refresh()
+
+    right.border(0)
+    right.bkgd(' ', curses.color_pair(3))
+    right.addstr(1, int(maxwidth/2)-3, "Done", curses.A_BOLD)
+    right.bkgd(' ', curses.A_NORMAL)
+    write_to_window(right, completed_tasks[:min(MAX_COMPLETED, curses.LINES)])
+    right.refresh()
+
+    stdscr.getkey()
+
+    curses.nocbreak()
+    curses.endwin()
+
     # pass master dictionary to render template and get html
-    html = render_template(tasks_dic)
+    #html = render_template(tasks_dic)
 
     # write html to file
-    write_html(html, SCRIPT_PATH + '/index.html')
+    #write_html(html, SCRIPT_PATH + '/index.html')
 
 
 if __name__ == '__main__':
-    main()
+    curses.wrapper(main)
