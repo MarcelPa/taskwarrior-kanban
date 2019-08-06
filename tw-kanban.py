@@ -59,15 +59,18 @@ def write_html(data, filename):
     with open(filename, 'w') as f:
         f.write(data)
 
-def write_to_window(win, list):
+def write_to_window(win, list, attr=curses.A_NORMAL):
     """
     Writes a list of ToDos to a curses window
     """
 
     for i, item in enumerate(list):
         # TODO: make fancy word breaking stuff here
+        desc = item['description']
+        if len(item['description']) > int(curses.COLS/3)-6:
+            desc = f"{item['description'][:int(curses.COLS/3)-9]}..."
         # This one defines the layout
-        win.addnstr(i+3, 1,f"{item['description']} [{item['project']}]\n", int(curses.COLS/3)-3)
+        win.addnstr(2*i+3, 3,f"{desc} [{item['project']}]\n", int(curses.COLS/3)-6, attr)
 
 def main(stdscr):
 
@@ -102,38 +105,32 @@ def main(stdscr):
 
     #stdscr = curses.initscr()
     curses.start_color()
+    curses.use_default_colors()
     curses.noecho()
     curses.cbreak()
-    curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_RED)
-    curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_YELLOW)
-    curses.init_pair(3, curses.COLOR_WHITE, curses.COLOR_GREEN)
 
+    # the maximal width is COLS / 3, as we aim for three colums
     maxwidth = int(curses.COLS/3)
+    # init the three windows
     windows = [None, None, None]
     for win_i in range(0,3):
-        windows[win_i] = curses.newwin(curses.LINES, maxwidth-1, 0, win_i * maxwidth)
+        windows[win_i] = curses.newwin(curses.LINES, maxwidth, 0, win_i * maxwidth)
     stdscr.refresh()
     left, center, right = windows
 
-    left.border(0)
-    left.bkgd(' ', curses.color_pair(1))
+    # draw the left column
     left.addstr(1, int(maxwidth/2)-4, "Backlog", curses.A_BOLD)
-    left.bkgd(' ', curses.A_NORMAL)
     write_to_window(left, todo_tasks)
     left.refresh()
 
-    center.border(0)
-    center.bkgd(' ', curses.color_pair(2))
+    # draw the center column
     center.addstr(1, int(maxwidth/2)-6, "In Progress", curses.A_BOLD)
-    center.bkgd(' ', curses.A_NORMAL)
     write_to_window(center, started_tasks)
     center.refresh()
 
-    right.border(0)
-    right.bkgd(' ', curses.color_pair(3))
+    # draw the right column
     right.addstr(1, int(maxwidth/2)-3, "Done", curses.A_BOLD)
-    right.bkgd(' ', curses.A_NORMAL)
-    write_to_window(right, completed_tasks[:min(MAX_COMPLETED, curses.LINES)])
+    write_to_window(right, completed_tasks[:min(MAX_COMPLETED, curses.LINES)], curses.A_ITALIC)
     right.refresh()
 
     stdscr.getkey()
