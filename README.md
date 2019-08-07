@@ -1,4 +1,5 @@
-# taskwarrior-kanban: Personal Kanban Board for Taskwarrior.
+taskwarrior-kanban: Personal Kanban Board for Taskwarrior.
+==========================================================
 
 `tw-kanban.py` is a Python(3) script which provides a simple [personal
 Kanban](http://lifehacker.com/productivity-101-how-to-use-personal-kanban-to-visuali-1687948640)
