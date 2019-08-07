@@ -46,8 +46,11 @@ def gather_tasks(filters=None):
     element tuple (todo_tasks, started_tasks, completed_tasks).
     """
 
+    if filters is None:
+        filters = []
+
     # get pending tasks
-    pending_tasks = get_tasks(['status:pending'])
+    pending_tasks = get_tasks(['status:pending'] + filters)
 
     # get tasks to do
     todo_tasks = [task for task in pending_tasks if 'start' not in task]
@@ -64,6 +67,6 @@ def gather_tasks(filters=None):
     check_due_date(started_tasks)
 
     # get completed tasks and add to master dictionary (same as above)
-    completed_tasks = get_tasks(['status:completed'])[:MAX_COMPLETED]
+    completed_tasks = get_tasks(['status:completed'] + filters)[:MAX_COMPLETED]
 
     return (todo_tasks, started_tasks, completed_tasks)
