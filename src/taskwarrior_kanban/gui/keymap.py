@@ -1,19 +1,70 @@
+import taskwarrior_kanban.gui.cli
 
-def get_input(key):
+def selection(func, main_window, tasks, selection):
+    func(main_window, tasks, selection)
+    taskwarrior_kanban.gui.cli.redraw(main_window, tasks, selection)
+
+def fire(key):
     """
     Specifies what should happend when a certain key is pressed.
     """
 
-    if key == 'j':
-        pass
-    elif key == 'k':
-        pass
+    if key == 'k':
+        def select_up(main_window, tasks, selection):
+            win, item = selection
+            if item > 0:
+                item -= 1
+            else:
+                item = 0
+            selection = (win, item)
+            taskwarrior_kanban.gui.cli.redraw(main_window, tasks, selection)
+            return (main_window, tasks, selection)
+
+        return select_up
+
+    elif key == 'j':
+        def select_down(main_window, tasks, selection):
+            win, item = selection
+            item += 1
+            if item >= len(tasks[win]):
+                item = len(tasks[win])-1
+            selection = (win, item)
+            main_window.control.window.addstr(5, 40, f"{selection}")
+            taskwarrior_kanban.gui.cli.redraw(main_window, tasks, selection)
+            return (main_window, tasks, selection)
+
+        return select_down
+
     elif key == 'l':
-        pass
+        def select_right(main_window, tasks, selection):
+            win, item = selection
+            win += 1
+            if win >= len(main_window.get_window()):
+                win = len(main_window.get_window()) -1
+            if item < len(tasks[win]):
+                selection = (win, item)
+            else:
+                selection = (win, len(tasks[win])-1)
+            taskwarrior_kanban.gui.cli.redraw(main_window, tasks, selection)
+            return (main_window, tasks, selection)
+
+        return select_right
+
     elif key == 'h':
-        pass
+        def select_left(main_window, tasks, selection):
+            win, item = selection
+            if win > 0:
+                win -=1
+            else:
+                win = 0
+            selection = (win, item)
+            taskwarrior_kanban.gui.cli.redraw(main_window, tasks, selection)
+            return (main_window, tasks, selection)
+
+        return select_left
+
     elif key == 'q':
-        return False
+        return None
     else:
-        return False
-    return True
+        return None
+    return None
