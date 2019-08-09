@@ -1,5 +1,7 @@
 import curses
 
+import taskwarrior_kanban.main
+
 class MainWindow:
     """
     Definition of the layout of curses windows, aka the standard screen 
@@ -30,9 +32,9 @@ class MainWindow:
         |            Control Pane            |
         +------------------------------------+
         """
-        self.left = TodoWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, 0, "Backlog")
+        self.left = TaskWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, 0, "Backlog")
         self.center = TodoWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, self.MAX_WIN_WIDTH, "In Progress")
-        self.right = TodoWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, 2 * self.MAX_WIN_WIDTH, "Done")
+        self.right = TaskWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, 2 * self.MAX_WIN_WIDTH, "Done")
         self.control = ControlWindow(self.control_lines, curses.COLS, self.MAX_WIN_HEIGHT, 0)
         self.scr.refresh()
 
@@ -103,7 +105,6 @@ class CursesWindow:
         self.window.addstr(1, int(win_width/2 - len(title_todraw)/2), title_todraw, curses.A_BOLD)
         self.refresh()
 
-
 class TodoWindow(CursesWindow):
     """
     Extend a CursesWindow to show a list of todos as a content.
@@ -129,9 +130,51 @@ class TodoWindow(CursesWindow):
                 # maximum length: window    - border         - length of project title - (space and square bracket chars ( = 3)) - (three dots)
                 max_desc_length = win_width - self.border_cells*2 - len(item['project']) - 3 - 3
                 desc = f"{item['description'][:max_desc_length]}... [{item['project']}]"
-            # If not long enough, pad with spaces in order to pain a whole line
+            # If not long enough, pad with spaces in order to paint a whole line
             else:
-                desc = f"{desc}{' ' * (win_width - self.border_cells*2 - len(desc))}"
+                desc = "{:<{}}".format(desc, win_width-2)
+            
+            if selected == i:
+                highlight = curses.A_REVERSE
+            else:
+                highlight = curses.A_NORMAL
+
+            # newlines are not supposed to be drawn
+            desc = desc.replace('\n', ' ')
+
+            # Write description to the window
+            self.window.addstr(i+3, 2,f"{desc}", self.colorize[i%2] | attr | highlight)
+
+        self.refresh()
+
+class TaskWindow(CursesWindow):
+    """
+    Extend a CursesWindow to show a list of todos as a content.
+    """
+
+    def draw(self, list, selected=-1, attr=curses.A_NORMAL):
+        # draw generics
+        super().draw()
+
+        # get the window measurements
+        win_height, win_width = self.window.getmaxyx()
+
+        # if the list is longer than the maximum height, truncate it TODO: make something smarter here (scrolling?)
+        if len(list) > win_height:
+            list = list[:win_height-1]
+
+        # iterate through all ToDos within the list
+        for i, item in enumerate(list):
+            # This one defines the layout
+            desc = f"{item['description']} [{item['project']}]"
+            # Truncate the description if too long
+            if len(desc) > win_width - self.border_cells*2:
+                # maximum length: window    - border         - length of project title - (space and square bracket chars ( = 3)) - (three dots)
+                max_desc_length = win_width - self.border_cells*2 - len(item['project']) - 3 - 3
+                desc = f"{item['description'][:max_desc_length]}... [{item['project']}]"
+            # If not long enough, pad with spaces in order to paint a whole line
+            else:
+                desc = "{:<{}}".format(desc, win_width-2)
             
             if selected == i:
                 highlight = curses.A_REVERSE
@@ -152,20 +195,21 @@ class ControlWindow(CursesWindow):
     """
     
     def __init__(self, height, width, y, x):
-        super().__init__(height, width, y, x, 'Controls')
-        self.window.addstr(height-2, 2, f"Controls show up here")
+        super().__init__(height, width, y, x, "Controls")
+        # TODO: finish view before controls
+        #self.window.addstr(height-2, 2, f"Controls show up here")
 
     def draw(self, element=None):
-        # draw generics
-        super().draw()
-
+        """
+        Method that draws the control panel, including details to a task if
+        supplied in element.
+        """
         # draw a border
         self.window.border(0)
 
         # draw details to an element, if supplied
         if element is not None:
-            # TODO: I wrote -9, that is just some number I chose. Calculate that to have a correct number
-            self.window.addstr(3, 2, f"Task: {element['description']}{' ' * (curses.COLS - len(element['description']) - 9)}")
-            self.window.addstr(4, 2, f"project: {element['project']}, due: {element['due']}")
+            self.window.addstr(1, 1, f"Task: {element['description']}{' ' * (curses.COLS - len(element['description']) - 8)}")
+            self.window.addstr(2, 1, f"{taskwarrior_kanban.main.format_task_details(element)}")
 
         self.refresh()

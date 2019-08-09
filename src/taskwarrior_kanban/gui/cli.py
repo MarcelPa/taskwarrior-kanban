@@ -3,7 +3,7 @@ import curses
 
 import taskwarrior_kanban.main 
 import taskwarrior_kanban.gui.keymap
-from taskwarrior_kanban.gui.curses_windows import MainWindow, TodoWindow, ControlWindow
+from taskwarrior_kanban.gui.curses_windows import MainWindow
 
 description="""
 Some really nice text.
@@ -37,7 +37,8 @@ def redraw(main_window, tasks, selection):
             win.draw(tasks[i])
         else:
             win.draw()
-    main_window.get_window(selection[0]).draw(tasks[selection[0]], selection[1])
+    # TODO: finish view before controls
+    #main_window.get_window(selection[0]).draw(tasks[selection[0]], selection[1])
     main_window.control.draw(element=tasks[selection[0]][selection[1]])
     main_window.refresh()
 
@@ -53,7 +54,7 @@ def main():
     # create the four sub-windows
     main.create_windows()
     # set a selection variable, a tuple of (selected window, selected item)
-    selection = (0,0)
+    selection = (0,1)
 
     # draw the three task windows
     redraw(main, tasks, selection)
@@ -61,7 +62,9 @@ def main():
     loop = True
     while loop:
         input_key = main.scr.getkey()
-        action = taskwarrior_kanban.gui.keymap.fire(input_key)
+        # TODO: work on displaying everything first. Controls will follow afterwards
+        #action = taskwarrior_kanban.gui.keymap.fire(input_key)
+        action = None
         if action is not None:
             main, task, selection = action(main, tasks, selection)
             
