@@ -38,7 +38,10 @@ def redraw(main_window, tasks, selection):
 
     for i, win in enumerate(main_window.get_window()):
         if i < len(tasks):
-            win.draw(tasks[i])
+            if i == selection[0]:
+                win.draw(tasks[i], selected=selection[1])
+            else:
+                win.draw(tasks[i])
         else:
             win.draw()
     main_window.control.draw(element=tasks[selection[0]][selection[1]])
@@ -68,13 +71,14 @@ def main():
 
     loop = True
     while loop:
-        input_key = main.scr.getkey()
-        # TODO: work on displaying everything first. Controls will follow afterwards
-        #action = taskwarrior_kanban.gui.keymap.fire(input_key)
-        action = None
+        input_key = main.scr.getch()
+        with open('/tmp/output', 'w+') as stdout:
+            stdout.write(f"{input_key}")
+            stdout.write('\n')
+        action = taskwarrior_kanban.gui.keymap.get_mapped_action(input_key, main.get_window(selection[0]))
         if action is not None:
-            main, task, selection = action(main, tasks, selection)
-            
+            selection = action(tasks, selection)
+            redraw(main, tasks, selection)
             loop = True
         else:
             loop = False

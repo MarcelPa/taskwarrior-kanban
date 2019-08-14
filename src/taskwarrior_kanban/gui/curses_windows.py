@@ -18,6 +18,7 @@ class MainWindow:
         curses.noecho()
         curses.cbreak()
         curses.curs_set(0)
+        self.scr.keypad(True)
         self.scr.clear()
 
     def create_windows(self):
@@ -33,14 +34,14 @@ class MainWindow:
         +------------------------------------+
         """
         self.left = TaskWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, 0, "Backlog")
-        self.center = TodoWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, self.MAX_WIN_WIDTH, "In Progress")
+        self.center = TaskWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, self.MAX_WIN_WIDTH, "In Progress")
         self.right = TaskWindow(self.MAX_WIN_HEIGHT, self.MAX_WIN_WIDTH, 0, 2 * self.MAX_WIN_WIDTH, "Done")
         self.control = ControlWindow(self.control_lines, curses.COLS, self.MAX_WIN_HEIGHT, 0)
         self.scr.refresh()
 
     def get_window(self, i=None):
         """
-        Return a sub-window by number if a valid number is supplied, reutnrs
+        Return a sub-window by number if a valid number is supplied, returns
         a list of all windows otherwise.
 
         i == 1: left
@@ -62,6 +63,12 @@ class MainWindow:
         curses.endwin()
 
     def refresh(self):
+        """
+        Refresh all subwindows as well as the MainWindow itself.
+        """
+
+        for win in self.get_window():
+            win.refresh()
         self.scr.refresh()
         
 class CursesWindow:
@@ -90,7 +97,7 @@ class CursesWindow:
         """
         self.window.refresh()
 
-    # func=None allows this function to be used as a decorator (I guess)
+    # TODO: func=None allows this function to be used as a decorator (I guess)
     def draw(self, func=None):
         """
         This function will draw the title to the window it represents.
@@ -105,54 +112,17 @@ class CursesWindow:
         self.window.addstr(1, int(win_width/2 - len(title_todraw)/2), title_todraw, curses.A_BOLD)
         self.refresh()
 
-class TodoWindow(CursesWindow):
-    """
-    Extend a CursesWindow to show a list of todos as a content.
-    """
-
-    def draw(self, list, selected=-1, attr=curses.A_NORMAL):
-        # draw generics
-        super().draw()
-
-        # get the window measurements
-        win_height, win_width = self.window.getmaxyx()
-
-        # if the list is longer than the maximum height, truncate it TODO: make something smarter here (scrolling?)
-        if len(list) > win_height:
-            list = list[:win_height-1]
-
-        # iterate through all ToDos within the list
-        for i, item in enumerate(list):
-            # This one defines the layout
-            desc = f"{item['description']} [{item['project']}]"
-            # Truncate the description if too long
-            if len(desc) > win_width - self.border_cells*2:
-                # maximum length: window    - border         - length of project title - (space and square bracket chars ( = 3)) - (three dots)
-                max_desc_length = win_width - self.border_cells*2 - len(item['project']) - 3 - 3
-                desc = f"{item['description'][:max_desc_length]}... [{item['project']}]"
-            # If not long enough, pad with spaces in order to paint a whole line
-            else:
-                desc = "{:<{}}".format(desc, win_width-2)
-            
-            if selected == i:
-                highlight = curses.A_REVERSE
-            else:
-                highlight = curses.A_NORMAL
-
-            # newlines are not supposed to be drawn
-            desc = desc.replace('\n', ' ')
-
-            # Write description to the window
-            self.window.addstr(i+3, 2,f"{desc}", self.colorize[i%2] | attr | highlight)
-
-        self.refresh()
-
 class TaskWindow(CursesWindow):
     """
     Extend a CursesWindow to show a list of todos as a content.
     """
 
     def draw(self, list, selected=-1, attr=curses.A_NORMAL):
+        """
+        Draws a TaskWindow based on a list of tasks, a possible selection using
+        the attributes supplied by attr.
+        """
+
         # draw generics
         super().draw()
 
@@ -188,6 +158,62 @@ class TaskWindow(CursesWindow):
             self.window.addstr(i+3, 2,f"{desc}", self.colorize[i%2] | attr | highlight)
 
         self.refresh()
+    
+    def select_up(self, tasks, selection):
+        """
+        Returns a new selection tuple based on the current selection and the
+        list of tasks of the currently selected window after the user has
+        moved the selection up. This function should be returned by a keymap
+        and fired by the cli.
+        """
+        window, task_i = selection
+        if task_i > 0:
+            return (window, task_i-1)
+        else:
+            return (window, 0)
+
+    def select_down(self, tasks, selection):
+        """
+        Returns a new selection tuple based on the current selection and the
+        list of tasks of the currently selected window after the user has
+        moved the selection down. This function should be returned by a keymap
+        and fired by the cli.
+        """
+        window, task_i = selection
+        if task_i >= len(tasks[window]) -1:
+            return (window, len(tasks[window])-1)
+        else:
+            return (window, task_i +1)
+
+    def select_left(self, tasks, selection):
+        """
+        Returns a new selection tuple based on the current selection and the
+        list of tasks of the currently selected window after the user has
+        moved the selection left. This function should be returned by a keymap
+        and fired by the cli.
+        """
+        window, task_i = selection
+        if window <= 0:
+            return (0, task_i)
+        else:
+            if task_i >= len(tasks[window-1]):
+                task_i = len(tasks[window-1]) -1
+            return (window -1, task_i)
+
+    def select_right(self, tasks, selection):
+        """
+        Returns a new selection tuple based on the current selection and the
+        list of tasks of the currently selected window after the user has
+        moved the selection right. This function should be returned by a keymap
+        and fired by the cli.
+        """
+        window, task_i = selection
+        if window >= 2:
+            return (2, task_i)
+        else:
+            if task_i >= len(tasks[window+1]):
+                task_i = len(tasks[window+1]) -1
+            return (window +1, task_i)
 
 class ControlWindow(CursesWindow):
     """
@@ -196,8 +222,6 @@ class ControlWindow(CursesWindow):
     
     def __init__(self, height, width, y, x):
         super().__init__(height, width, y, x, "Controls")
-        # TODO: finish view before controls
-        #self.window.addstr(height-2, 2, f"Controls show up here")
 
     def draw(self, element=None):
         """
