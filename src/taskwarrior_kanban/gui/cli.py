@@ -1,7 +1,7 @@
 import argparse
 import curses
 
-import taskwarrior_kanban.main 
+import taskwarrior_kanban
 import taskwarrior_kanban.gui.keymap
 from taskwarrior_kanban.gui.curses_windows import MainWindow
 
@@ -32,22 +32,29 @@ def create_parser():
     return parser
 
 def redraw(main_window, tasks, selection):
+    """
+    Redraw the main window with all tasks as well as the selected task.
+    """
+
     for i, win in enumerate(main_window.get_window()):
         if i < len(tasks):
             win.draw(tasks[i])
         else:
             win.draw()
-    # TODO: finish view before controls
-    #main_window.get_window(selection[0]).draw(tasks[selection[0]], selection[1])
     main_window.control.draw(element=tasks[selection[0]][selection[1]])
     main_window.refresh()
 
 def main():
+    """
+    This function runs the whole application and is the only place in this
+    application that shall contain state.
+    """
+
     # get the arguments from the commandline
     args = create_parser().parse_args()
 
     # gather all tasks
-    tasks = list(taskwarrior_kanban.main.gather_tasks(args.taskwarrior_args))
+    tasks = list(taskwarrior_kanban.gather_tasks(args.taskwarrior_args))
 
     # create the main windows
     main = MainWindow()

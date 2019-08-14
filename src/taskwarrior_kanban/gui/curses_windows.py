@@ -1,6 +1,6 @@
 import curses
 
-import taskwarrior_kanban.main
+import taskwarrior_kanban
 
 class MainWindow:
     """
@@ -210,6 +210,6 @@ class ControlWindow(CursesWindow):
         # draw details to an element, if supplied
         if element is not None:
             self.window.addstr(1, 1, f"Task: {element['description']}{' ' * (curses.COLS - len(element['description']) - 8)}")
-            self.window.addstr(2, 1, f"{taskwarrior_kanban.main.format_task_details(element)}")
+            self.window.addstr(2, 1, f"{taskwarrior_kanban.format_task_details(element)}")
 
         self.refresh()
